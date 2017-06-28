@@ -11,7 +11,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 /**
- * @author lzming
+ * @author wukong
  * @since 2017-06-27.
  */
 @WebServlet("/hello")
