@@ -3,9 +3,14 @@ package org.smart4j.chapter2.test;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.smart4j.chapter2.helper.DatabaseHelper;
 import org.smart4j.chapter2.model.Customer;
 import org.smart4j.chapter2.service.CustomerService;
 
+import javax.xml.crypto.Data;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,8 +29,8 @@ public class CustomerServiceTest {
     }
 
     @Before
-    public void init() {
-
+    public void init() throws Exception {
+        DatabaseHelper.executeSqlFile("sql/customer_init.sql");
     }
 
     @Test
@@ -48,6 +53,17 @@ public class CustomerServiceTest {
         fieldMap.put("contact", "Join");
         fieldMap.put("telephone", "13534567890");
         boolean result = customerService.createCustomer(fieldMap);
+        Assert.assertTrue(result);
+    }
+
+    @Test
+    public void UpdateCustomerTest() throws Exception {
+        long id = 1;
+        Map<String, Object> fieldMap = new HashMap<>();
+        fieldMap.put("name", "customer007");
+        fieldMap.put("contact", "Join");
+        fieldMap.put("telephone", "13534567890");
+        boolean result = customerService.updateCustomer(id, fieldMap);
         Assert.assertTrue(result);
     }
 

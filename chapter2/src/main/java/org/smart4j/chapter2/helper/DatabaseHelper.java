@@ -10,6 +10,9 @@ import org.slf4j.LoggerFactory;
 import org.smart4j.chapter2.util.CollectionUtil;
 import org.smart4j.chapter2.util.PropsUtil;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -183,7 +186,7 @@ public class DatabaseHelper {
             values.append("?, ");
         }
         columns.replace(columns.lastIndexOf(", "), columns.length(), ")");
-        values.replace(values.lastIndexOf("?, "), columns.length(), ")");
+        values.replace(values.lastIndexOf(", "), columns.length(), ")");
         sql += columns + " VALUES " + values;
 
         Object[] params = fieldMap.values().toArray();
@@ -205,7 +208,7 @@ public class DatabaseHelper {
             return false;
         }
 
-        String sql = "UPDATE TABLE " + getTableName(entityClass) + " SET ";
+        String sql = "UPDATE " + getTableName(entityClass) + " SET ";
         StringBuilder columns = new StringBuilder();
         for (String fieldName : fieldMap.keySet()) {
             columns.append(fieldName).append("=?, ");
@@ -228,7 +231,7 @@ public class DatabaseHelper {
      * @return
      */
     public static <T> boolean deleteEntity(Class<T> entityClass, long id) {
-        String sql = "DELETE FROM " + getTableName(entityClass) + "WHERE id = ?";
+        String sql = "DELETE FROM " + getTableName(entityClass) + " WHERE id = ?";
         return executeUpdate(sql, id) == 1;
     }
 
@@ -242,5 +245,21 @@ public class DatabaseHelper {
         return entityClass.getSimpleName().toUpperCase();
     }
 
-
+    /**
+     * 执行SQL文件
+     * @param filePath
+     */
+    public static void executeSqlFile(String filePath) {
+        InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream(filePath);
+        BufferedReader br = new BufferedReader(new InputStreamReader(is));
+        try {
+            String sql;
+            while ((sql = br.readLine()) != null) {
+                executeUpdate(sql);
+            }
+        } catch (Exception e) {
+            logger.error("execute sql file failure", e);
+            throw new RuntimeException(e);
+        }
+    }
 }
