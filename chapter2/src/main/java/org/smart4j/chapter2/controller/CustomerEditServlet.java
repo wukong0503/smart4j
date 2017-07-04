@@ -11,7 +11,7 @@ import java.io.IOException;
  * @author wukong
  * @since 2017-06-29.
  */
-@WebServlet(name = "customer_edit")
+@WebServlet("/customer_edit")
 public class CustomerEditServlet extends HttpServlet{
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {

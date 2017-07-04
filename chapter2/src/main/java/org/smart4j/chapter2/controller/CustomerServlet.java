@@ -15,13 +15,14 @@ import java.util.List;
  * @author wukong
  * @since 2017-06-29.
  */
-@WebServlet(name = "customer")
+@WebServlet("/customer")
 public class CustomerServlet extends HttpServlet {
 
     private CustomerService customerService;
 
     @Override
     public void init() throws ServletException {
+        System.out.println("/customer invoke init().");
         customerService = new CustomerService();
     }
 

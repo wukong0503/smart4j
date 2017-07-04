@@ -11,7 +11,7 @@ import java.io.IOException;
  * @author wukong
  * @since 2017-06-29.
  */
-@WebServlet(name = "customer_create")
+@WebServlet("/customer_create")
 public class CustomerCreateServlet extends HttpServlet {
     /**
      * 进入创建客户界面
