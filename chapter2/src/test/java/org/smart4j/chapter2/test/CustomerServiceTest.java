@@ -47,7 +47,7 @@ public class CustomerServiceTest {
     }
 
     @Test
-    public void CreateCustomerTest() throws Exception {
+    public void createCustomerTest() throws Exception {
         Map<String, Object> fieldMap = new HashMap<>();
         fieldMap.put("name", "customer007");
         fieldMap.put("contact", "Join");
@@ -57,7 +57,7 @@ public class CustomerServiceTest {
     }
 
     @Test
-    public void UpdateCustomerTest() throws Exception {
+    public void updateCustomerTest() throws Exception {
         long id = 1;
         Map<String, Object> fieldMap = new HashMap<>();
         fieldMap.put("name", "customer007");
@@ -68,7 +68,7 @@ public class CustomerServiceTest {
     }
 
     @Test
-    public void DeleteCustomerTest() throws Exception {
+    public void deleteCustomerTest() throws Exception {
         long id = 1;
         boolean result = customerService.deleteCustomer(id);
         Assert.assertTrue(result);
