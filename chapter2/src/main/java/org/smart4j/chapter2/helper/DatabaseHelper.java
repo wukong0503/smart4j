@@ -1,15 +1,16 @@
 package org.smart4j.chapter2.helper;
 
+import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
 import org.apache.commons.dbutils.handlers.MapListHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.smart4j.chapter2.util.CollectionUtil;
 import org.smart4j.chapter2.util.PropsUtil;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,29 +24,28 @@ import java.util.Properties;
 public class DatabaseHelper {
     private static final Logger logger = LoggerFactory.getLogger(DatabaseHelper.class);
 
-    private static final String DRIVER;
-    private static final String URL;
-    private static final String USERNAME;
-    private static final String PASSWORD;
-
-    private static final QueryRunner QUERY_RUNNER = new QueryRunner();
-
-    // 为了确保一个线程中只有一个Connection，使用ThreadLocal来存放本地线程变量
-    private static final ThreadLocal<Connection> CONNECTION_HOLDER = new ThreadLocal<>();
+    //查询更新 助手
+    private static final QueryRunner QUERY_RUNNER;
+    // 为了确保一个线程中只有一个Connection，使用ThreadLocal来存放当前线程的 sql 链接对象
+    private static final ThreadLocal<Connection> CONNECTION_HOLDER;
+    //用于dbcp链接池的数据源
+    private static final BasicDataSource DATA_SOURCE;
 
     static {
+        CONNECTION_HOLDER = new ThreadLocal<>();
+        QUERY_RUNNER = new QueryRunner();
+
         Properties conf = PropsUtil.loadProps("config.properties");
-        DRIVER = conf.getProperty("jdbc.driver");
-        URL = conf.getProperty("jdbc.url");
-        USERNAME = conf.getProperty("jdbc.username");
-        PASSWORD = conf.getProperty("jdbc.password");
-        try {
-            Class.forName(DRIVER);
-        } catch (ClassNotFoundException e) {
-            logger.error("can not load jdbc driver", e);
-        } catch (Exception ex) {
-            logger.error("other exception", ex);
-        }
+        String driver = conf.getProperty("jdbc.driver");
+        String url = conf.getProperty("jdbc.url");
+        String username = conf.getProperty("jdbc.username");
+        String password = conf.getProperty("jdbc.password");
+
+        DATA_SOURCE = new BasicDataSource();
+        DATA_SOURCE.setDriverClassName(driver);
+        DATA_SOURCE.setUrl(url);
+        DATA_SOURCE.setUsername(username);
+        DATA_SOURCE.setPassword(password);
     }
 
     /**
@@ -55,7 +55,7 @@ public class DatabaseHelper {
         Connection conn = CONNECTION_HOLDER.get();
         if (conn == null) {
             try {
-                conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+                conn = DATA_SOURCE.getConnection();
             } catch (SQLException e) {
                 logger.error("get connection failure", e);
                 throw new RuntimeException(e);
@@ -69,22 +69,27 @@ public class DatabaseHelper {
     /**
      * 关闭数据库连接
      */
-    public static void closeConnection() {
-        Connection conn = CONNECTION_HOLDER.get();
-        if (conn != null) {
-            try {
-                conn.close();
-            } catch (SQLException e) {
-                logger.error("close connection failure", e);
-                throw new RuntimeException(e);
-            } finally {
-                CONNECTION_HOLDER.remove();
-            }
-        }
-    }
+//    public static void closeConnection() {
+//        Connection conn = CONNECTION_HOLDER.get();
+//        if (conn != null) {
+//            try {
+//                conn.close();
+//            } catch (SQLException e) {
+//                logger.error("close connection failure", e);
+//                throw new RuntimeException(e);
+//            } finally {
+//                CONNECTION_HOLDER.remove();
+//            }
+//        }
+//    }
 
     /**
      * 查询实体类列表
+     * @param entityClass
+     * @param sql
+     * @param params
+     * @param <T>
+     * @return
      */
     public static <T> List<T> queryEntityList(Class<T> entityClass, String sql, Object... params) {
         List<T> entityList;
@@ -94,8 +99,6 @@ public class DatabaseHelper {
         } catch (SQLException e) {
             logger.error("query entity list failure", e);
             throw new RuntimeException(e);
-        } finally {
-            closeConnection();
         }
         return entityList;
     }
@@ -103,6 +106,11 @@ public class DatabaseHelper {
 
     /**
      * 查询实体
+     * @param entityClass
+     * @param sql
+     * @param params
+     * @param <T>
+     * @return
      */
     public static <T> T queryEntity(Class<T> entityClass, String sql, Object... params) {
         T entity;
@@ -112,8 +120,6 @@ public class DatabaseHelper {
         } catch (SQLException e) {
             logger.error("query entity failure", e);
             throw new RuntimeException(e);
-        } finally {
-            closeConnection();
         }
         return entity;
     }
@@ -121,6 +127,9 @@ public class DatabaseHelper {
 
     /**
      * 执行查询语句
+     * @param sql
+     * @param params
+     * @return
      */
     public static List<Map<String, Object>> executeQuery(String sql, Object... params) {
         List<Map<String, Object>> result;
@@ -130,8 +139,6 @@ public class DatabaseHelper {
         } catch (SQLException e) {
             logger.error("execute query failure", e);
             throw new RuntimeException(e);
-        } finally {
-            closeConnection();
         }
         return result;
     }
@@ -139,6 +146,8 @@ public class DatabaseHelper {
 
     /**
      * 执行更新语句（包括update、insert、delete）
+     * @param sql
+     * @param params
      * @return rows 返回执行后影响的行数
      */
     public static int executeUpdate(String sql, Object... params) {
@@ -149,25 +158,89 @@ public class DatabaseHelper {
         } catch (SQLException e) {
             logger.error("execute update failure", e);
             throw new RuntimeException(e);
-        } finally {
-            closeConnection();
         }
         return rows;
     }
 
+    /**
+     * 插入实体
+     * @param entityClass
+     * @param fieldMap
+     * @param <T>
+     * @return
+     */
+    public static <T> boolean insertEntity(Class<T> entityClass, Map<String, Object> fieldMap) {
+        if (CollectionUtil.isEmpty(fieldMap)) {
+            logger.error("can not insert entity: fieldMap is empty");
+            return false;
+        }
+
+        String sql = "INSERT INTO " + getTableName(entityClass);
+        StringBuilder columns = new StringBuilder("(");
+        StringBuilder values = new StringBuilder("(");
+        for (String fieldName : fieldMap.keySet()) {
+            columns.append(fieldName).append(", ");
+            values.append("?, ");
+        }
+        columns.replace(columns.lastIndexOf(", "), columns.length(), ")");
+        values.replace(values.lastIndexOf("?, "), columns.length(), ")");
+        sql += columns + " VALUES " + values;
+
+        Object[] params = fieldMap.values().toArray();
+        return executeUpdate(sql, params) == 1;
+    }
 
 
+    /**
+     * 更新实体，根据ID
+     * @param entityClass
+     * @param id
+     * @param fieldMap
+     * @param <T>
+     * @return
+     */
+    public static <T> boolean updateEntity(Class<T> entityClass, long id, Map<String, Object> fieldMap) {
+        if (CollectionUtil.isEmpty(fieldMap)) {
+            logger.error("can not update entity: fieldMap is empty");
+            return false;
+        }
 
+        String sql = "UPDATE TABLE " + getTableName(entityClass) + " SET ";
+        StringBuilder columns = new StringBuilder();
+        for (String fieldName : fieldMap.keySet()) {
+            columns.append(fieldName).append("=?, ");
+        }
+        sql += columns.substring(0, columns.lastIndexOf(", ")) + " WHERE id = ?";
 
+        List<Object> paramList = new ArrayList<>();
+        paramList.addAll(fieldMap.values());
+        paramList.add(id);
+        Object[] params = paramList.toArray();
 
+        return executeUpdate(sql, params) == 1;
+    }
 
+    /**
+     * 删除实体
+     * @param entityClass
+     * @param id
+     * @param <T>
+     * @return
+     */
+    public static <T> boolean deleteEntity(Class<T> entityClass, long id) {
+        String sql = "DELETE FROM " + getTableName(entityClass) + "WHERE id = ?";
+        return executeUpdate(sql, id) == 1;
+    }
 
-
-
-
-
-
-
+    /**
+     * 返回 表名.实体名称 全大写
+     * @param entityClass
+     * @param <T>
+     * @return
+     */
+    private static <T> String getTableName(Class<T> entityClass) {
+        return entityClass.getSimpleName().toUpperCase();
+    }
 
 
 }
