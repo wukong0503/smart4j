@@ -1,4 +1,4 @@
--- CREATE DATABASE smart4j_test;
+# CREATE DATABASE smart4j_test;
 
 # ####
 # CREATE TABLE `customer` (

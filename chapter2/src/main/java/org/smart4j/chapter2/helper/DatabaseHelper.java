@@ -255,7 +255,9 @@ public class DatabaseHelper {
         try {
             String sql;
             while ((sql = br.readLine()) != null) {
-                executeUpdate(sql);
+                if (!sql.substring(0, 1).equals("#") && !sql.substring(0, 1).equals("--")) {
+                    executeUpdate(sql);
+                }
             }
         } catch (Exception e) {
             logger.error("execute sql file failure", e);
