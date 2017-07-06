@@ -74,7 +74,8 @@ public final class ClassUtil {
                                     JarEntry jarEntry = jarEnties.nextElement();
                                     String jarEntryName = jarEntry.getName();
                                     if (jarEntryName.endsWith(".class")) {
-                                        String className = jarEntryName.substring(0, jarEntryName.lastIndexOf(".")).replaceAll("/", ".");
+                                        String className = jarEntryName.substring(0,
+                                                jarEntryName.lastIndexOf(".")).replaceAll("/", ".");
                                         doAddClass(classSet, className);
                                     }
                                 }
@@ -98,7 +99,26 @@ public final class ClassUtil {
                 return (file.isFile() && file.getName().endsWith(".class")) || file.isDirectory();
             }
         });
-        // TODO: 2017/7/5  
+        for (File file : files) {
+            String fileName = file.getName();
+            if (file.isFile()) {
+                String className = fileName.substring(0, fileName.lastIndexOf("."));
+                if (StringUtil.isNotEmpty(packageName)) {
+                    className = packageName + "." + className;
+                }
+                doAddClass(classSet, className);
+            } else {
+                String subPackagePath = fileName;
+                if (StringUtil.isNotEmpty(packagePath)) {
+                    subPackagePath = packagePath + "/" + subPackagePath;
+                }
+                String subPackageName = fileName;
+                if (StringUtil.isNotEmpty(packageName)) {
+                    subPackageName = packageName + "." + subPackageName;
+                }
+                addClass(classSet, subPackagePath, subPackageName);
+            }
+        }
     }
 
     private static void doAddClass(Set<Class<?>> classSet, String className) {
