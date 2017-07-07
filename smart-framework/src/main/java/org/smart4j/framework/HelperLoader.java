@@ -26,4 +26,7 @@ public final class HelperLoader {
         }
     }
 
+    public static void main(String[] args) {
+        init();
+    }
 }
